@@ -342,6 +342,7 @@ else:
 
 # ======================= САММАРИ =======================
 report_dt = datetime.now().strftime("%d.%m.%Y %H:%M")
+margin_total_txt = f"{margin_total:+,.0f}".replace(",", " ")
 summary = (
     f"<div class='summary'>"
     f"<b>Саммари.</b> В текущем срезе {fnum(n_calls)} {unit_noun} ({fnum(dialed)} уник. контактов): "
@@ -354,9 +355,8 @@ summary = (
     f"{fnum(no_consent_bot)} обрывов до 2 этапа и {fnum(offer_bot_drop)} обрывов на 2 этапе. "
     f"По юнит-экономике работаем "
     f"<span style='color:{econ_color};font-weight:700'>{econ_state}</span>: "
-    f"{margin_min:+.0f} ₽ с минуты разговора, суммарно {margin_total:+,.0f} ₽ за выбранный период."
+    f"{margin_min:+.0f} ₽ с минуты разговора, суммарно {margin_total_txt} ₽ за выбранный период."
     f"</div>")
-summary = summary.replace(",", " ")
 
 GREEN, RED, AMBER = "#4b9f5e", "#d9534f", "#e8a33d"
 undialed_contacts = max(int(base_size) - dialed, 0)
@@ -537,28 +537,13 @@ with dashboard_tabs[2]:
                 "Средняя стоимость минуты",
             ]),
         },
-        {
-            "Проблема": (f"Бот выходит не на того человека или на общую линию — {fnum(nwp_all)} звонков "
-                         f"по базе, {fnum(secretary_cases)} подтверждённых секретарей"),
-            "Гипотеза": "Если при попадании на секретаря или не того человека бот будет просить переключить "
-                        "на ЛПР, то «Разговоры с ЛПР ÷ Соединения» вырастет, потому что часть базы ведёт "
-                        "на общую линию, а не на лицо, принимающее решение.",
-            "Метрики": bullets([
-                "Разговоры с ЛПР ÷ Соединения",
-                "Дошли до оффера ÷ Соединения",
-            ]),
-            "Гард-метрики": bullets([
-                "Средняя длительность звонка",
-                "Негатив ÷ Живые разговоры",
-            ]),
-        },
     ])
     ab_cols = ["Гипотеза", "Метрики", "Гард-метрики"]
     st.table(ab_tests.set_index("Проблема")[ab_cols])
 
     st.divider()
 
-    st.markdown("**Текущие проблемы**")
+    st.subheader("Текущие проблемы")
     st.table(robot_problems.set_index("Приоритет"))
 
 with dashboard_tabs[1]:
