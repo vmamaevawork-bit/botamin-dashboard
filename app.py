@@ -70,16 +70,16 @@ h1,h2,h3 {color:#1b1f3b;}
 .summary {background:#f0f3ff; border:1px solid #d7dcfb; border-left:4px solid #4b57c9;
     border-radius:10px; padding:14px 18px; margin-bottom:14px; color:#1b1f3b;
     font-size:0.95rem; line-height:1.5;}
-/* таблица проблем (5 колонок): «Размер» и «Массовость» шире, без переноса */
-[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(3),
-[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(3),
-[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(4),
-[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(4) {
+/* таблица проблем (ровно 5 колонок): «Размер» и «Массовость» шире, без переноса */
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) th:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) th:nth-child(4),
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(4) {
     white-space:nowrap; text-align:center;}
-[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(3),
-[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(3) {min-width:130px;}
-[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(4),
-[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(4) {min-width:115px;}
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) th:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(3) {min-width:130px;}
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) th:nth-child(4),
+[data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(4) {min-width:115px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -409,7 +409,7 @@ with dashboard_tabs[0]:
               help=f"Выручка с минуты − стоимость минуты = {revenue:.0f} − {rate:.0f} = {margin_min:.0f} ₽.")
 
 with dashboard_tabs[2]:
-    st.markdown("**Что стоит улучшить уже сейчас, без A/B-тестов**")
+    # ---- данные для таблицы «Текущие проблемы» ----
     flagged_ao = int((df["reason"] == "answering_machine").sum())
     analytic_ao = int(df["is_ao"].sum())
     extra_ao = max(analytic_ao - flagged_ao, 0)
@@ -451,37 +451,85 @@ with dashboard_tabs[2]:
         }
         for i, (n, name, note) in enumerate(problems_raw)
     ])
-    st.table(robot_problems.set_index("Приоритет"))
 
-    st.divider()
+    # ---- объём выборки и длительность для A/B-тестов ----
+    import math
+    from statistics import NormalDist
+
+    def n_arm(p1, mde, power=0.8, alpha=0.05):
+        if p1 <= 0:
+            return 0
+        za = NormalDist().inv_cdf(1 - alpha / 2)
+        zb = NormalDist().inv_cdf(power)
+        p2 = min(max(p1 + mde, 0.0001), 0.9999)
+        pbar = (p1 + p2) / 2
+        return math.ceil((za * math.sqrt(2 * pbar * (1 - pbar))
+                          + zb * math.sqrt(p1 * (1 - p1) + p2 * (1 - p2))) ** 2 / mde ** 2)
+
+    n_engaged = int(df["engaged"].sum())
+    ab_days = max((df["dt"].max() - df["dt"].min()).days + 1, 1)
+
+    def size_txt(s):
+        return f"{fnum(s)} на плечо (×2 = {fnum(2 * s)})" if s > 0 else "—"
+
+    def dur_txt(s, pop):
+        if s <= 0 or pop <= 0:
+            return "зависит от трафика"
+        d = math.ceil(2 * s / (pop / ab_days))
+        return f"≈ {fnum(d)} дн (~{max(1, round(d / 7))} нед при текущем трафике)"
+
+    s_open = n_arm(n_consent / n_cont1 if n_cont1 else 0, 0.03)
+    s_drop = n_arm(dropped / n_engaged if n_engaged else 0, 0.03)
+    s_meet = n_arm(n_booked / n_consent if n_consent else 0, 0.07)
+    lost_offers = max(n_cont1 - n_consent, 0)
 
     st.subheader("Идеи A/B-тестов")
-    st.caption("Для каждого теста: проблема, гипотеза по её устранению и метрики, по которым оценим эффект.")
+    st.caption("Гипотезы под текущие проблемы: что тестируем, как измеряем, сколько займёт и какая нужна выборка.")
     ab_tests = pd.DataFrame([
         {
-            "Проблема": "Клиенты отваливаются в начале — мало кто доходит до оффера",
-            "Гипотеза": "Если убрать ранний запрос согласия и раньше показать ценность оффера, "
-                        "больше клиентов останутся в разговоре и дойдут до оффера.",
-            "Метрики": "Целевые: доля прошедших 1 этап среди дослушавших начало, доля дошедших "
-                       "до оффера. Гард: ранние отказы, «не понял бота / связь».",
+            "Проблема": (f"Клиенты отваливаются в начале — из {fnum(n_cont1)} дослушавших начало "
+                         f"до оффера доходят {fnum(n_consent)}, теряем {fnum(lost_offers)} офферов "
+                         f"({pct(lost_offers, n_cont1)})"),
+            "Гипотеза": "Убрать ранний запрос согласия и раньше показать ценность оффера — "
+                        "тогда больше клиентов останутся в разговоре и дойдут до оффера.",
+            "Почему уверены в гипотезе": "На холодной базе ранние сбросы нормальны; главный резерв — "
+                        "удержать тех, кто остался после первых секунд. Это самая крупная утечка воронки по объёму.",
+            "Метрики": "Доля прошедших 1 этап среди дослушавших начало; доля дошедших до оффера.",
+            "Гард-метрики": "Доля ранних отказов; доля «не понял бота / связь»; конверсия из оффера во встречу.",
+            "Длительность теста": dur_txt(s_open, n_cont1),
+            "Объём выборки": size_txt(s_open),
         },
         {
             "Проблема": "Бот сам бросает вовлечённых клиентов при паузе, шуме или неуверенном ответе",
-            "Гипотеза": "Если вместо раннего завершения бот один раз переспросит и восстановит "
-                        "диалог, часть вовлечённых клиентов дойдёт до встречи.",
-            "Метрики": "Целевые: доля потерянных разговоров, доля встреч среди услышавших оффер. "
-                       "Гард: длительность звонка, негатив, зацикливания.",
+            "Гипотеза": "Вместо раннего завершения бот один раз переспрашивает и восстанавливает диалог — "
+                        "тогда часть вовлечённых клиентов дойдёт до встречи.",
+            "Почему уверены в гипотезе": "В данных это отдельные категории «Связь / не понял бота», "
+                        "«Молчание бота» и «Потерянные разговоры» — управляемые потери, а не отказ клиента.",
+            "Метрики": "Доля потерянных разговоров; доля встреч среди услышавших оффер.",
+            "Гард-метрики": "Средняя длительность звонка; доля негатива; доля зацикливаний.",
+            "Длительность теста": dur_txt(s_drop, n_engaged),
+            "Объём выборки": size_txt(s_drop),
         },
         {
             "Проблема": "После оффера мало кто соглашается на встречу",
-            "Гипотеза": "Сейчас бот зовёт на встречу слишком общими словами. Если предлагать "
-                        "конкретику — готовое время на выбор («вторник в 15:00 или среда в 11:00?») "
-                        "и одну понятную пользу встречи — клиенту проще согласиться, и встреч станет больше.",
-            "Метрики": "Целевые: доля назначивших встречу среди услышавших оффер, число встреч. "
-                       "Гард: отказы после оффера, доля нецелевых контактов.",
+            "Гипотеза": "Вместо общего предложения созвониться давать конкретику — готовое время на выбор "
+                        "(«вторник в 15:00 или среда в 11:00?») и одну понятную пользу встречи.",
+            "Почему уверены в гипотезе": "После оффера конверсия уже заметно выше, чем наверху воронки, "
+                        "поэтому даже умеренное улучшение CTA даёт прямой прирост встреч без смены базы.",
+            "Метрики": "Доля назначивших встречу среди услышавших оффер; число встреч.",
+            "Гард-метрики": "Доля отказов после оффера; доля нецелевых / редиректов.",
+            "Длительность теста": dur_txt(s_meet, n_consent),
+            "Объём выборки": size_txt(s_meet),
         },
     ])
-    st.table(ab_tests.set_index("Проблема"))
+    ab_cols = ["Гипотеза", "Почему уверены в гипотезе", "Метрики", "Гард-метрики",
+               "Длительность теста", "Объём выборки"]
+    st.table(ab_tests.set_index("Проблема")[ab_cols])
+
+    st.divider()
+
+    st.markdown("**Текущие проблемы**")
+    st.table(robot_problems.set_index("Приоритет"))
 
 with dashboard_tabs[1]:
     st.subheader("Воронка по этапам бота")
