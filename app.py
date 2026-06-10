@@ -798,11 +798,6 @@ with dashboard_tabs[4]:
 
 with dashboard_tabs[5]:
     st.subheader("Качество робота")
-    st.caption("Здесь два уровня анализа: сначала полный разрез ошибок бота, потом короткий список ключевых дефектов, которые напрямую роняют разговор.")
-    st.markdown(
-        "**Чем отличаются блоки.** `Полная структура ошибок бота` — это полный разрез всех типов ошибок, чтобы видеть состав проблемы целиком. "
-        "`Ключевые дефекты разговора` — это короткий приоритетный список того, что чаще всего бьёт по диалогу прямо сейчас."
-    )
 
     err = df[(df["has_bot_error"]) & (df["bot_error_type"] != "Не распознал автоответчик")]
     n_err = len(err)
@@ -814,23 +809,9 @@ with dashboard_tabs[5]:
     e2.metric("Из них клиент сбросил сам", fnum(err_hangup),
               help=f"{pct(err_hangup, n_err)} от всех звонков с ошибками.")
     e3.metric("Молчание бота (dead air)", fnum(int(df["bot_silent"].sum())))
-    by_type = err["bot_error_type"].value_counts()
-    fige = go.Figure(go.Bar(y=by_type.index[::-1], x=by_type.values[::-1], orientation="h",
-                            marker_color="#d9534f", text=by_type.values[::-1], textposition="auto"))
-    fige.update_layout(height=250, margin=dict(l=10, r=10, t=10, b=10),
-                       xaxis_title="звонков", font=dict(color="#1b1f3b"))
-    st.plotly_chart(fige)
-
-    st.divider()
-    st.markdown("**Ключевые дефекты разговора**")
-    q1, q2, q3 = st.columns(3)
-    q1.metric("Зацикливание / повтор", fnum(quality_loops))
-    q2.metric("Пустая реплика бота", fnum(quality_silent))
-    q3.metric("Пустая отрасль в оффере", fnum(quality_industry_bug))
 
 with dashboard_tabs[6]:
     st.subheader("Разбор диалогов")
-    st.caption("Выберите срез — и читайте реальные транскрипты обрывов.")
     f1, f2, f3 = st.columns(3)
     with f1:
         pick_step = st.selectbox("Макс. шаг диалога",
