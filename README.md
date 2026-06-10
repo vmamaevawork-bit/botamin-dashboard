@@ -7,13 +7,29 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install streamlit pandas plotly
+.venv/bin/pip install -r requirements.txt
 .venv/bin/streamlit run app.py
 ```
 
 Открыть http://localhost:8501
 
-Путь к данным задаётся в `app.py` → `DATA_PATH` (по умолчанию `Calls Week Anon.csv`).
+Данные лежат в `data/Calls Week Anon.csv` (путь задаётся в `app.py` → `DATA_PATH`).
+
+## Деплой (Streamlit Community Cloud, бесплатно)
+
+1. Зайти на <https://share.streamlit.io> → **Continue with GitHub**, разрешить доступ
+   к приватным репозиториям.
+2. **Create app** → **Deploy from GitHub**:
+   - Repository — этот репозиторий
+   - Branch — `main`
+   - Main file path — `app.py`
+3. **Deploy** — сборка ставит зависимости из `requirements.txt`.
+
+Ограничить доступ: **Settings → Sharing → «Only specific people can view this app»**
+и добавить нужные email — тогда вход только по приглашению, без индексации поисковиками.
+
+> В датасете — реальные номера и расшифровки разговоров (персональные данные).
+> Не делайте приложение полностью публичным без обезличивания данных.
 
 ## Состав
 
