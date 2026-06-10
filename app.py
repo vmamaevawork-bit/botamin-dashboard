@@ -2,6 +2,7 @@
 Дашборд аналитика Botamin.
 Запуск:  .venv/bin/streamlit run app.py
 """
+import os
 from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
@@ -17,7 +18,8 @@ from data_pipeline import (
     canonicalize_subcategory,
 )
 
-DATA_PATH = "/Users/viktoriamamaeva/Downloads/Calls Week Anon.csv"
+DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "data", "Calls Week Anon.csv")
 PIPELINE_CACHE_VERSION = "2026-06-10-subcategory-dedup-v9"
 
 st.set_page_config(page_title="Botamin · Дашборд аналитика", layout="wide",

@@ -8,5 +8,7 @@ streamlit.log
 ab_state.json
 .claude/
 
-# данные звонков не коммитим
+# CSV не коммитим, кроме датасета дашборда в data/
 *.csv
+!data/
+!data/*.csv
