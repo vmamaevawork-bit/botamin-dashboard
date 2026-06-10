@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# локальное состояние и логи
+streamlit.log
+ab_state.json
+.claude/
+
+# данные звонков не коммитим
+*.csv
