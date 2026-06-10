@@ -204,6 +204,9 @@ unit_noun = "контактов" if unit_is_contacts else "звонков"
 n_calls = len(fsrc)
 dialed = int(fsrc["phone"].nunique())             # обзвонено контактов (для % базы)
 fsrc["live_human_answer"] = (~fsrc["no_pickup"] & ~fsrc["is_ao"]).astype(int)
+repeats = fsrc[fsrc["call_index"] >= 2]
+wrong_person_all = fsrc[fsrc["gave_contact"] & ~fsrc["is_ao"]]
+nwp_all = len(wrong_person_all)
 
 vz = fsrc[~fsrc["no_pickup"]]                     # взяли трубку
 n_vz = len(vz)
@@ -366,6 +369,7 @@ dashboard_tabs = st.tabs([
     "База и время",
     "Качество робота",
     "Диалоги",
+    "Поиск по номеру",
 ])
 
 with dashboard_tabs[0]:
@@ -407,12 +411,69 @@ with dashboard_tabs[2]:
 
     st.markdown("**Что стоит улучшить уже сейчас, без A/B-тестов**")
     flagged_ao = int((df["reason"] == "answering_machine").sum())
+    analytic_ao = int(df["is_ao"].sum())
+    extra_ao = max(analytic_ao - flagged_ao, 0)
+    repeat_ao_share = (repeats["is_ao"].mean() * 100) if len(repeats) else 0
+    secretary_cases = int((df["machine_type"] == "Виртуальный секретарь").sum())
+    conf_cases = int((df["preconsent_bot_reason"] == "Связь / не понял бота").sum()) + int((df["nobook_reason"] == "Связь / не понял бота").sum())
+    script_break = int((df["bot_error_type"] == "Не по скрипту").sum())
+    robot_problems = pd.DataFrame([
+        {
+            "Проблема": "АО не распознаются роботом как АО",
+            "Размер": f"{fnum(analytic_ao)} звонков",
+            "Частотность": pct(analytic_ao, len(df)),
+            "Как читается": f"Робот/телефония пометили только {fnum(flagged_ao)}, аналитика нашла ещё {fnum(extra_ao)} сверху",
+        },
+        {
+            "Проблема": "АО особенно часто остаются на перезвонах",
+            "Размер": f"{repeat_ao_share:.1f}%",
+            "Частотность": "от повторных звонков",
+            "Как читается": "На повторных попытках больше половины звонков уходят в автоматику",
+        },
+        {
+            "Проблема": "Бот зацикливается",
+            "Размер": f"{fnum(quality_loops)} звонков",
+            "Частотность": pct(quality_loops, len(df)),
+            "Как читается": "Нужна правка логики, чтобы бот не повторялся и не зависал в одном сценарии",
+        },
+        {
+            "Проблема": "В базе не хватает индустрии",
+            "Размер": f"{fnum(quality_industry_bug)} звонков",
+            "Частотность": pct(quality_industry_bug, len(df)),
+            "Как читается": "Пустая подстановка ломает оффер и делает скрипт нерелевантным",
+        },
+        {
+            "Проблема": "Бот не соблюдает скрипт",
+            "Размер": f"{fnum(script_break)} звонков",
+            "Частотность": pct(script_break, len(df)),
+            "Как читается": "Вместо штатного опенера звучит off-script заход про «хочу к вам в продажи»",
+        },
+        {
+            "Проблема": "Проблемы связи / бот не понятен клиенту",
+            "Размер": f"{fnum(conf_cases)} звонков",
+            "Частотность": "минимум по явным кейсам",
+            "Как читается": "Это явные срывы диалога из-за шума, связи, ветра или непонятной речи бота",
+        },
+        {
+            "Проблема": "Общий номер компании принимается за человека",
+            "Размер": f"{fnum(secretary_cases)} звонков",
+            "Частотность": "подтв. виртуальные секретари",
+            "Как читается": "Минимум столько раз бот говорил не с ЛПР, а с общей линией / секретарём",
+        },
+    ])
+    st.table(robot_problems)
     st.markdown(
         f"- Научить бота не зацикливаться: сейчас таких звонков **{fnum(quality_loops)}**.\n"
-        f"- Перестать терять живых людей, принимая их за АО: сейчас робот/телефония пометили как АО **{fnum(flagged_ao)}** звонков, а аналитически АО и автоматики насчитывается **{fnum(int(df['is_ao'].sum()))}**.\n"
+        f"- Перестать терять живых людей, принимая их за АО: сейчас робот/телефония пометили как АО **{fnum(flagged_ao)}** звонков, а аналитически АО и автоматики насчитывается **{fnum(analytic_ao)}**.\n"
         f"- Заполнить пробелы в базе, чтобы бот шёл по скрипту корректно: пустая индустрия встречается в **{fnum(quality_industry_bug)}** звонках.\n"
         "- Разобрать кейсы, где человек не понял бота или были проблемы со связью, и свести их к минимуму: это одна из главных причин срыва перехода от оффера к назначению встречи.\n"
         f"- Отдельно пересмотреть работу с АО на перезвонах: по повторным звонкам видно, что значимая доля попыток уходит в автоматику, а часть АО вообще не была помечена как АО самим роботом."
+    )
+    st.markdown("**Ещё проблемы, которые видны в данных**")
+    st.markdown(
+        f"- `Молчание бота / dead air` — **{fnum(bot_silent)}** звонков. Это отдельный технический дефект, не сводящийся к зацикливанию.\n"
+        f"- `Потерянные разговоры` — **{fnum(dropped)}** звонков, где человек не отказал, но бот всё равно завершил диалог.\n"
+        f"- `Не тот человек / редирект` — **{fnum(new_contacts)}** звонков на этапе оффера и **{fnum(nwp_all)}** звонков по всей базе. Это сигнал, что часть базы просто ведёт не к нужному ЛПР."
     )
 
     st.divider()
@@ -861,6 +922,76 @@ with dashboard_tabs[6]:
         "- `Назначили встречу` — в диалоге есть явная фиксация времени / даты или бот уже дошёл до квалификации.\n"
         "- `Дали квалификацию` — бот дошёл до квалификационного вопроса (`reached_step >= 4`)."
     )
+
+with dashboard_tabs[7]:
+    st.subheader("Поиск по номеру")
+    st.caption("Введите номер — покажем все его звонки (по всей базе, без учёта фильтров слева) "
+               "с результатами и диалогами.")
+
+    def norm_phone(s):
+        return "".join(ch for ch in str(s) if ch.isdigit())
+
+    raw = st.text_input("Номер телефона", placeholder="например, 79991234567 или +7 999 123-45-67")
+    q = norm_phone(raw)
+    if len(q) == 11 and q.startswith("8"):
+        q = "7" + q[1:]
+    elif len(q) == 10:
+        q = "7" + q
+
+    if not q:
+        st.info("Введите номер в любом формате — лишние символы (плюс, пробелы, дефисы) уберём сами.")
+    else:
+        phone_norm = df_all["phone"].map(norm_phone)
+        calls = df_all[phone_norm == q].sort_values("dt")
+        if calls.empty:
+            st.warning(f"По номеру {q} звонков не найдено.")
+        else:
+            booked = int(calls["meeting_booked"].sum())
+            s1, s2, s3, s4 = st.columns(4)
+            s1.metric("Всего звонков", fnum(len(calls)))
+            s2.metric("Назначена встреча", "Да" if booked else "Нет",
+                      help=f"Встреча зафиксирована в {fnum(booked)} из {fnum(len(calls))} звонков.")
+            s3.metric("Первый звонок", f"{calls['dt'].min():%d.%m.%Y}")
+            s4.metric("Последний звонок", f"{calls['dt'].max():%d.%m.%Y}")
+            st.divider()
+
+            for _, row in calls.iterrows():
+                meet = "✅ встреча" if row["meeting_booked"] else "—"
+                head = (f"#{row['call_index']} · {row['dt']:%d.%m.%Y %H:%M} · "
+                        f"{row['reached_step_name']} · {row['reason']} · {row['dur_raw']} · {meet}")
+                with st.expander(head):
+                    facts = [
+                        ("Дата и время", f"{row['dt']:%d.%m.%Y %H:%M:%S}"),
+                        ("Длительность", row["dur_raw"]),
+                        ("Статус", row["status"]),
+                        ("Причина завершения", row["reason"]),
+                        ("Этап диалога", row["reached_step_name"]),
+                        ("Реплик в диалоге", fnum(int(row["n_turns"]))),
+                        ("Встреча назначена", "Да" if row["meeting_booked"] else "Нет"),
+                        ("Реакция клиента", row["objection"] or "—"),
+                        ("Автоответчик / машина", "Да" if row["is_ao"] else "Нет"),
+                        ("Ошибка бота", row["bot_error_type"] if row["has_bot_error"] else "—"),
+                    ]
+                    rows_html = "".join(
+                        f"<tr><td style='color:#6b7280;padding:2px 14px 2px 0'>{k}</td>"
+                        f"<td style='color:#1b1f3b'><b>{v}</b></td></tr>"
+                        for k, v in facts)
+                    st.markdown(f"<table style='font-size:0.88rem'>{rows_html}</table>",
+                                unsafe_allow_html=True)
+
+                    audio = row.get("audio")
+                    if isinstance(audio, str) and audio.startswith("http"):
+                        st.markdown(f"🎧 [Запись разговора]({audio})")
+
+                    if row["has_dialog"]:
+                        st.markdown("**Диалог:**")
+                        for spk, utt in parse_turns(row["dialog"]):
+                            cls = "bubble-bot" if spk == "bot" else "bubble-user"
+                            who = "bot" if spk == "bot" else "клиент"
+                            st.markdown(f"<div class='{cls}'><b>{who}:</b> {utt or '—'}</div>",
+                                        unsafe_allow_html=True)
+                    else:
+                        st.caption("Диалога по этому звонку нет (нет соединения / молчание).")
 
 st.stop()
 
