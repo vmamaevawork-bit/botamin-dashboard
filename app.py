@@ -80,9 +80,20 @@ h1,h2,h3 {color:#1b1f3b;}
 [data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(3) {min-width:130px;}
 [data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) th:nth-child(4),
 [data-testid="stTable"] table:has(thead th:nth-child(5)):not(:has(thead th:nth-child(6))) td:nth-child(4) {min-width:115px;}
-/* таблица A/B-идей (ровно 4 колонки): буллеты метрик с новой строки */
-[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td {
-    white-space:pre-line; vertical-align:top;}
+/* таблица A/B-идей (ровно 4 колонки): фикс-ширины + буллеты метрик с новой строки */
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) {
+    table-layout:fixed; width:100%;}
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td,
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) th {
+    white-space:pre-line; vertical-align:top; word-break:break-word;}
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) th:nth-child(1),
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td:nth-child(1) {width:28%;}
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) th:nth-child(2),
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td:nth-child(2) {width:20%;}
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) th:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td:nth-child(3) {width:26%;}
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) th:nth-child(4),
+[data-testid="stTable"] table:has(thead th:nth-child(4)):not(:has(thead th:nth-child(5))) td:nth-child(4) {width:26%;}
 </style>
 """, unsafe_allow_html=True)
 
