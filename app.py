@@ -70,7 +70,6 @@ h1,h2,h3 {color:#1b1f3b;}
 .summary {background:#f0f3ff; border:1px solid #d7dcfb; border-left:4px solid #4b57c9;
     border-radius:10px; padding:14px 18px; margin-bottom:14px; color:#1b1f3b;
     font-size:0.95rem; line-height:1.5;}
-.summary .prio {background:#fff3cd; border-radius:6px; padding:1px 6px;}
 </style>
 """, unsafe_allow_html=True)
 
