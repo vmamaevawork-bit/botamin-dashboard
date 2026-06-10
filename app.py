@@ -343,20 +343,35 @@ else:
 # ======================= САММАРИ =======================
 report_dt = datetime.now().strftime("%d.%m.%Y %H:%M")
 margin_total_txt = f"{margin_total:+,.0f}".replace(",", " ")
+# что значит знаменатель «%» для каждого этапа потерь
+base_labels = {
+    "Не дозвонились": "от всех звонков",
+    "АО / автоматика": "от дозвонившихся",
+    "Короткий отказ": "от живых разговоров",
+    "Не дал согласие на разговор": "от дослушавших начало",
+    "Отказ на 2 этапе": "от дошедших до оффера",
+    "Встреча не назначена": "от вышедших на шаг встречи",
+}
+top_loss_base_label = base_labels.get(top_loss_name, "от своей базы")
+loss_detail_part = (top_loss_detail + " ") if top_loss_detail else ""
 summary = (
-    f"<div class='summary'>"
-    f"<b>Саммари.</b> В текущем срезе {fnum(n_calls)} {unit_noun} ({fnum(dialed)} уник. контактов): "
-    f"дозвонились до {fnum(n_vz)}, автоответчики/автоматика — {fnum(n_ao)}, "
-    f"назначили встречу — <b>{fnum(good)}</b>, до квалификации дошли — <b>{fnum(n_to_qual)}</b>. "
-    f"<span class='prio'><b>Главный обрыв сейчас:</b> {top_loss_name} — "
-    f"{fnum(top_loss_value)} {unit_noun} ({pct(top_loss_value, top_loss_base)} от своей базы). "
-    f"{top_loss_detail}</span> "
-    f"Где бот сам теряет диалог: {fnum(dropped)} потерянных разговоров, "
-    f"{fnum(no_consent_bot)} обрывов до 2 этапа и {fnum(offer_bot_drop)} обрывов на 2 этапе. "
-    f"По юнит-экономике работаем "
+    "<div class='summary'>"
+    "<b>Саммари.</b>"
+    "<ul style='margin:6px 0 0; padding-left:20px'>"
+    f"<li><b>Воронка дозвона.</b> В срезе {fnum(n_calls)} {unit_noun} "
+    f"({fnum(dialed)} уник. контактов): дозвонились до {fnum(n_vz)}, из них "
+    f"автоответчик / автоматика — {fnum(n_ao)}; назначили встречу — <b>{fnum(good)}</b>, "
+    f"до квалификации дошли — <b>{fnum(n_to_qual)}</b>.</li>"
+    f"<li><b>Главный обрыв.</b> Больше всего звонков теряем на этапе «{top_loss_name}» — "
+    f"{fnum(top_loss_value)} {unit_noun}, это {pct(top_loss_value, top_loss_base)} "
+    f"{top_loss_base_label}. {loss_detail_part}"
+    f"Отдельно бот сам обрывает диалог: {fnum(dropped)} потерянных разговоров, "
+    f"{fnum(no_consent_bot)} до 2 этапа, {fnum(offer_bot_drop)} на 2 этапе.</li>"
+    f"<li><b>Юнит-экономика.</b> Работаем "
     f"<span style='color:{econ_color};font-weight:700'>{econ_state}</span>: "
-    f"{margin_min:+.0f} ₽ с минуты разговора, суммарно {margin_total_txt} ₽ за выбранный период."
-    f"</div>")
+    f"{margin_min:+.0f} ₽ с минуты разговора, суммарно {margin_total_txt} ₽ за период.</li>"
+    "</ul>"
+    "</div>")
 
 GREEN, RED, AMBER = "#4b9f5e", "#d9534f", "#e8a33d"
 undialed_contacts = max(int(base_size) - dialed, 0)
