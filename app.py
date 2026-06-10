@@ -70,6 +70,16 @@ h1,h2,h3 {color:#1b1f3b;}
 .summary {background:#f0f3ff; border:1px solid #d7dcfb; border-left:4px solid #4b57c9;
     border-radius:10px; padding:14px 18px; margin-bottom:14px; color:#1b1f3b;
     font-size:0.95rem; line-height:1.5;}
+/* таблица проблем (5 колонок): «Размер» и «Массовость» шире, без переноса */
+[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(4),
+[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(4) {
+    white-space:nowrap; text-align:center;}
+[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(3),
+[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(3) {min-width:130px;}
+[data-testid="stTable"] table:has(thead th:nth-child(5)) th:nth-child(4),
+[data-testid="stTable"] table:has(thead th:nth-child(5)) td:nth-child(4) {min-width:115px;}
 </style>
 """, unsafe_allow_html=True)
 
