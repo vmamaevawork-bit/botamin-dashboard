@@ -343,6 +343,7 @@ else:
 # ======================= САММАРИ =======================
 report_dt = datetime.now().strftime("%d.%m.%Y %H:%M")
 margin_total_txt = f"{margin_total:+,.0f}".replace(",", " ")
+lost_bot_meetings = dropped * 0.004
 # что значит знаменатель «%» для каждого этапа потерь
 base_labels = {
     "Не дозвонились": "от всех звонков",
@@ -365,7 +366,9 @@ summary = (
     f"<li><b>Где теряем больше всего звонков.</b> Больше всего звонков отсеивается на этапе "
     f"«{top_loss_name}» — {fnum(top_loss_value)} {unit_noun}, это {pct(top_loss_value, top_loss_base)} "
     f"{top_loss_base_label}. {loss_detail_part}"
-    f"Отдельно бот сам завершил {fnum(dropped)} разговоров, хотя на линии был живой человек.</li>"
+    f"Отдельно бот сам завершил {fnum(dropped)} разговоров, хотя на линии был живой человек. "
+    f"С учётом конверсии в назначение встречи 0,4%, потенциально потеряно "
+    f"0,4% × {fnum(dropped)} = {lost_bot_meetings:.1f} встречи.</li>"
     f"<li><b>Юнит-экономика.</b> Работаем "
     f"<span style='color:{econ_color};font-weight:700'>{econ_state}</span>: "
     f"{margin_min:+.0f} ₽ с минуты разговора, суммарно {margin_total_txt} ₽ за период.</li>"
